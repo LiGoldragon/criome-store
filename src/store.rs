@@ -1,4 +1,5 @@
 use crate::Error;
+use arbor::ChunkStore;
 
 /// blake3 hash — the content address
 pub type ContentHash = [u8; 32];
@@ -95,24 +96,51 @@ impl Store for MemoryStore {
     }
 }
 
+/// Kind byte for arbor tree node chunks.
+pub const KIND_ARBOR_NODE: u8 = 0xA0;
+
+/// arbor's ChunkStore implemented over criome-store's MemoryStore.
+/// Arbor chunks are stored with KIND_ARBOR_NODE as the type tag.
+impl ChunkStore for MemoryStore {
+    fn get(&self, hash: &arbor::Hash) -> Option<Vec<u8>> {
+        self.entries.get(hash).map(|(_, data)| data.clone())
+    }
+
+    fn put(&mut self, hash: arbor::Hash, data: Vec<u8>) {
+        self.entries
+            .entry(hash)
+            .or_insert_with(|| (KIND_ARBOR_NODE, data));
+    }
+
+    fn contains(&self, hash: &arbor::Hash) -> bool {
+        self.entries.contains_key(hash)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    fn put(s: &mut MemoryStore, kind: u8, data: &[u8]) -> ContentHash {
+        Store::put(s, kind, data).unwrap()
+    }
+
+    fn get<'a>(s: &'a MemoryStore, hash: &ContentHash) -> &'a [u8] {
+        Store::get(s, hash).unwrap()
+    }
+
     #[test]
     fn put_get_round_trip() {
         let mut store = MemoryStore::new();
-        let data = b"hello world";
-        let hash = store.put(0, data).unwrap();
-        let retrieved = store.get(&hash).unwrap();
-        assert_eq!(retrieved, data);
+        let hash = put(&mut store, 0, b"hello world");
+        assert_eq!(get(&store, &hash), b"hello world");
     }
 
     #[test]
     fn content_addressing_is_deterministic() {
         let mut store = MemoryStore::new();
-        let h1 = store.put(0, b"same bytes").unwrap();
-        let h2 = store.put(0, b"same bytes").unwrap();
+        let h1 = put(&mut store, 0, b"same bytes");
+        let h2 = put(&mut store, 0, b"same bytes");
         assert_eq!(h1, h2);
         assert_eq!(store.len(), 1);
     }
@@ -120,8 +148,8 @@ mod tests {
     #[test]
     fn different_content_different_hash() {
         let mut store = MemoryStore::new();
-        let h1 = store.put(0, b"alpha").unwrap();
-        let h2 = store.put(0, b"beta").unwrap();
+        let h1 = put(&mut store, 0, b"alpha");
+        let h2 = put(&mut store, 0, b"beta");
         assert_ne!(h1, h2);
         assert_eq!(store.len(), 2);
     }
@@ -130,57 +158,67 @@ mod tests {
     fn not_found() {
         let store = MemoryStore::new();
         let hash = content_hash(b"missing");
-        assert!(!store.contains(&hash));
-        assert!(store.get(&hash).is_err());
+        assert!(!Store::contains(&store, &hash));
+        assert!(Store::get(&store, &hash).is_err());
     }
 
     #[test]
     fn idempotent_put() {
         let mut store = MemoryStore::new();
-        let h1 = store.put(0, b"data").unwrap();
-        let h2 = store.put(1, b"data").unwrap();
+        let h1 = put(&mut store, 0, b"data");
+        let h2 = put(&mut store, 1, b"data");
         assert_eq!(h1, h2);
-        // First write wins — kind stays 0
-        let (_, retrieved) = store.entries.get(&h1).unwrap();
-        assert_eq!(retrieved, b"data");
         assert_eq!(store.len(), 1);
     }
 
     #[test]
     fn hash_matches_blake3() {
-        let data = b"verify hash";
-        let expected = *blake3::hash(data).as_bytes();
-        let actual = content_hash(data);
-        assert_eq!(expected, actual);
+        let expected = *blake3::hash(b"verify hash").as_bytes();
+        assert_eq!(expected, content_hash(b"verify hash"));
     }
 
     #[test]
     fn get_typed_returns_kind() {
         let mut store = MemoryStore::new();
-        let hash = store.put(7, b"typed data").unwrap();
-        let (kind, data) = store.get_typed(&hash).unwrap();
+        let hash = put(&mut store, 7, b"typed data");
+        let (kind, data) = Store::get_typed(&store, &hash).unwrap();
         assert_eq!(kind, 7);
         assert_eq!(data, b"typed data");
     }
 
     #[test]
+    fn arbor_chunk_store_compat() {
+        let mut store = MemoryStore::new();
+
+        // Put via criome-store Store trait
+        let hash = put(&mut store, 0, b"string data");
+
+        // Get via arbor ChunkStore trait
+        let data = ChunkStore::get(&store, &hash).unwrap();
+        assert_eq!(data, b"string data");
+
+        // Put via arbor ChunkStore trait
+        let arbor_hash = content_hash(b"tree node");
+        ChunkStore::put(&mut store, arbor_hash, b"tree node".to_vec());
+
+        // Verify it got KIND_ARBOR_NODE
+        let (kind, _) = Store::get_typed(&store, &arbor_hash).unwrap();
+        assert_eq!(kind, KIND_ARBOR_NODE);
+
+        assert_eq!(store.len(), 2);
+    }
+
+    #[test]
     fn scan_filters_by_kind() {
         let mut store = MemoryStore::new();
-        store.put(1, b"thought alpha").unwrap();
-        store.put(1, b"thought beta").unwrap();
-        store.put(2, b"rule gamma").unwrap();
-        store.put(0, b"string delta").unwrap();
+        put(&mut store, 1, b"thought alpha");
+        put(&mut store, 1, b"thought beta");
+        put(&mut store, 2, b"rule gamma");
+        put(&mut store, 0, b"string delta");
 
-        let thoughts = store.scan(1);
-        assert_eq!(thoughts.len(), 2);
-
-        let rules = store.scan(2);
-        assert_eq!(rules.len(), 1);
-
-        let strings = store.scan(0);
-        assert_eq!(strings.len(), 1);
-
-        let empty = store.scan(99);
-        assert!(empty.is_empty());
+        assert_eq!(store.scan(1).len(), 2);
+        assert_eq!(store.scan(2).len(), 1);
+        assert_eq!(store.scan(0).len(), 1);
+        assert!(store.scan(99).is_empty());
     }
 }

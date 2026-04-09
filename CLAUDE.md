@@ -1,70 +1,49 @@
 # criome-store
 
-Content-addressed persistence for sema worlds. blake3 hash → bytes.
-The substrate that sema objects, arbor chunks, and all media live on.
+The universal content-addressed store for the sema ecosystem. Every
+object — strings, sema objects, arbor tree nodes, manifests, commits —
+lives here, sorted by kind, addressed by blake3 hash.
 
-## What It Stores
+## Dependency
 
-Everything that has bytes and needs persistence:
-- Arbor prolly tree chunks (sema objects, index nodes)
-- String content (transitional — until sema enumerates it)
-- Media (images, audio, video — typed sema compositions eventually)
-- Manifests and commits (content-addressed version history)
+criome-store depends on arbor. It implements arbor's `ChunkStore` trait,
+bridging arbor trees to the content-addressed store. arbor chunks get
+`KIND_ARBOR_NODE` (0xA0) as their type tag.
 
-Content-addressing makes writes idempotent and deduplication automatic.
-The same bytes always produce the same hash. Structural sharing between
-versions is free.
+## Two Traits
 
-## Two Eras
+**`Store`** — the typed layer. `put(kind, data) → hash`, `get(hash) → bytes`,
+`get_typed(hash) → (kind, bytes)`, `scan(kind) → entries`. The `kind` byte
+sorts objects into typed namespaces.
 
-**String era (current):** string fields in sema objects are blake3 hashes
-pointing to text blobs stored here. Bodies, descriptions, URLs.
+**`ChunkStore`** (from arbor) — the raw layer. `put(hash, bytes)`,
+`get(hash) → bytes`, `contains(hash)`. arbor trees use this interface
+without knowing about kinds. criome-store's `MemoryStore` implements both.
 
-**Domain era (target):** as sema enumerates meaning into typed domain
-compositions, string content shrinks toward zero. The store evolves to
-hold typed domain trees and media — not text. Text becomes a projection
-rendered by per-language translation tables. The store persists what
-sema can't enumerate yet.
+## Kind Bytes
+
+```
+0x00..0x0F    strings (transitional — until sema enumerates them)
+0x10..0x1F    sema objects per struct type
+0xA0          arbor tree nodes
+0xF0          manifests
+0xF1          commits
+```
+
+## Current Implementation
+
+`MemoryStore` — in-memory `HashMap<ContentHash, (u8, Vec<u8>)>`. 9 tests.
 
 ## Target: Append-Only File Store
-
-Content-addressed records are write-once. No updates, no deletes, no
-ordering, no transactions. All the machinery of B-trees, WAL, MVCC
-exists to handle mutation. We don't mutate.
-
-### On-disk layout
 
 ```
 ~/.criome/store/
   store.bin     append-only data file (all objects)
-  store.idx     hash→offset index (rebuildable from store.bin)
+  store.idx     hash→(offset, length, kind) cache (rebuildable)
 ```
 
-### Object format in store.bin
-
-```
-byte 0       [blake3_hash: 32]    content address (self-verifying)
-byte 32      [kind: u8]           caller-defined type tag
-byte 33      [length: u32 LE]     length of payload
-byte 37      [padding: 0–15]      align payload to 16 bytes (for rkyv)
-byte 37+pad  [payload: length bytes]
-```
-
-### API surface
-
-```rust
-Store::open(path)                  → Result<Store>
-Store::put(kind: u8, data: &[u8]) → Result<ContentHash>
-Store::get(hash)                   → Result<&[u8]>
-Store::contains(hash)              → bool
-Store::rebuild_index()             → Result<()>
-```
-
-### Crash safety
-
-Append-only. Interrupted writes detected by hash verification on next
-index rebuild. No WAL, no journal. The store.bin file only grows.
-GC (future): walk live roots, mark reachable, compact to new file.
+Not yet built. `MemoryStore` is sufficient for development and testing.
+`FileStore` drops in behind the same `Store` + `ChunkStore` traits.
 
 ## VCS
 
