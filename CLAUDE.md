@@ -1,27 +1,43 @@
 # criome-store
 
-Content-addressed blob store engine. Generic — stores bytes addressed by
-blake3 hash. Knows nothing about World, Commit, or any typed caller.
+Content-addressed persistence for sema worlds. blake3 hash → bytes.
+The substrate that sema objects, arbor chunks, and all media live on.
 
-## Current implementation
+## What It Stores
 
-redb index + one-file-per-blob with two-level fan-out + optional zstd.
-This is the old-stack design (string era). Works, but carries dependencies
-(redb, zstd, base64) that the binary-native stack eliminates.
+Everything that has bytes and needs persistence:
+- Arbor prolly tree chunks (sema objects, index nodes)
+- String content (transitional — until sema enumerates it)
+- Media (images, audio, video — typed sema compositions eventually)
+- Manifests and commits (content-addressed version history)
 
-## Target: append-only file store
+Content-addressing makes writes idempotent and deduplication automatic.
+The same bytes always produce the same hash. Structural sharing between
+versions is free.
 
-Replace redb + blob files with a single append-only data file.
-Content-addressed immutable records have no updates, no deletes, no
-ordering, no transactions — all the machinery of B-trees, WAL, page
-splits, MVCC exists to handle mutation. We don't mutate.
+## Two Eras
+
+**String era (current):** string fields in sema objects are blake3 hashes
+pointing to text blobs stored here. Bodies, descriptions, URLs.
+
+**Domain era (target):** as sema enumerates meaning into typed domain
+compositions, string content shrinks toward zero. The store evolves to
+hold typed domain trees and media — not text. Text becomes a projection
+rendered by per-language translation tables. The store persists what
+sema can't enumerate yet.
+
+## Target: Append-Only File Store
+
+Content-addressed records are write-once. No updates, no deletes, no
+ordering, no transactions. All the machinery of B-trees, WAL, MVCC
+exists to handle mutation. We don't mutate.
 
 ### On-disk layout
 
 ```
 ~/.criome/store/
   store.bin     append-only data file (all objects)
-  store.idx     append-only index (hash→offset, rebuildable from store.bin)
+  store.idx     hash→offset index (rebuildable from store.bin)
 ```
 
 ### Object format in store.bin
@@ -34,51 +50,22 @@ byte 37      [padding: 0–15]      align payload to 16 bytes (for rkyv)
 byte 37+pad  [payload: length bytes]
 ```
 
-blake3(payload) == hash. Content-addressing makes writes idempotent.
-
 ### API surface
 
 ```rust
-Store::open(path)                → Result<Store>
-Store::put(kind: u8, data: &[u8]) → Result<ContentHash>  // append, skip if exists
-Store::get(hash)                 → Result<&[u8]>          // mmap, zero-copy
-Store::contains(hash)            → bool                    // index check
-Store::rebuild_index()           → Result<()>              // scan store.bin
+Store::open(path)                  → Result<Store>
+Store::put(kind: u8, data: &[u8]) → Result<ContentHash>
+Store::get(hash)                   → Result<&[u8]>
+Store::contains(hash)              → bool
+Store::rebuild_index()             → Result<()>
 ```
-
-### In-memory index
-
-`HashMap<[u8; 32], (u64, u32)>` — hash → (file_offset, length).
-Loaded from store.idx on startup. Rebuilt by scanning store.bin if
-store.idx is missing or corrupt. At agent scale (thousands of objects),
-fits in a few KB of RAM.
 
 ### Crash safety
 
-Append-only. If the last write is interrupted, trailing bytes fail hash
-verification — detected on next index rebuild, truncated. No WAL, no
-journal, no two-phase commit. The store.bin file only grows.
-
-### Why not keep redb
-
-redb solves the general case: mutable key-value pairs with ordered
-traversal and ACID transactions. Our keys are blake3 hashes (point
-lookup only), our values are immutable (no updates), and we have one
-writer (the agent process). redb's COW B-tree and transaction machinery
-are for problems we don't have.
-
-The append-only file matches redb's read performance (both can mmap)
-with less mechanism. Dependencies drop from redb+zstd+base64 to just
-blake3.
-
-### When this stops working
-
-If the index outgrows RAM (billions of objects) or we need secondary
-indexes that can't be in-memory. At single-author agent scale this is
-not a concern. Escape hatch: LMDB+rkyv or hash table on pages. The
-append file migrates trivially — scan and re-insert.
+Append-only. Interrupted writes detected by hash verification on next
+index rebuild. No WAL, no journal. The store.bin file only grows.
+GC (future): walk live roots, mark reachable, compact to new file.
 
 ## VCS
 
-Jujutsu (`jj`) is mandatory. Git is the backend only. Always pass `-m` to
-`jj` commands.
+Jujutsu (`jj`) is mandatory. Always pass `-m`.
