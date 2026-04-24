@@ -6,72 +6,68 @@ separate index DB tracks `hash → path + metadata + reachability`.
 
 ## Role in the sema ecosystem
 
-Per `mentci-next/docs/architecture.md §3`:
+Per `mentci-next/docs/architecture.md §5`:
 
 - **sema** (records DB, redb-backed) holds logical records —
   owned by criomed.
-- **lojix-store** (this repo) holds **opaque files** —
+- **lojix-store** (this repo) holds **real-file artifacts** —
   compiled binary trees, user attachments — owned by lojixd.
-  Any sema record that references big or unstructured payloads
-  stores a blake3 hash; lojixd resolves the hash to a
-  filesystem path.
+- **sema records reference lojix-store hashes** as canonical
+  artifact identity.
 
-A compiled Rust binary lives at a hash-derived path like
-`~/.lojix/store/<hash>/bin/<name>` and is directly executable.
-This is why architecture.md §8 says "a binary is just a path"
-and why there's no `Launch` protocol verb.
+During the bootstrap era, nix builds into `/nix/store`; lojixd
+runs `BundleIntoLojixStore` to copy the closure into
+`~/.lojix/store/<blake3>/` with RPATH rewrite; the
+`StoreEntryHash` is what sema sees. `/nix/store` is a
+transient build-intermediate, not a destination.
 
 ## Status
 
-**CANON-MISSING-IMPLEMENTATION.** The repo exists (renamed from
-`criome-store` on 2026-04-24); the code inside is an abandoned
-byte-map prototype (`MemoryStore` over `HashMap<Hash, Vec<u8>>`)
-that does **not** match the filesystem architecture.
+**Skeleton-as-design.** Types and trait signatures are pinned;
+function bodies are `todo!()`. `cargo check` passes; `cargo
+build` fails (intentional — nothing's implemented). The
+skeleton **is** the design doc; modifying the interface means
+modifying this code.
 
-**The prototype will be replaced**, not extended. Whoever
-implements lojix-store for real starts from:
+Real implementation lands alongside lojixd scaffolding (per
+`mentci-next/reports/030` Phase C).
 
-- `Cargo.toml` + directory layout as scaffolding.
-- `flake.nix` for dev env.
-- *Not* `source/store.aski` — that's from a superseded design.
-- *Not* `ChunkStore`-style byte-map APIs — those don't suit a
-  filesystem store.
+## Module layout
 
-## Implementation direction
+```
+src/
+  lib.rs        — crate-level invariants + module re-exports
+  hash.rs       — StoreEntryHash newtype (blake3)
+  layout.rs     — StoreRoot, StorePath; ~/.lojix/store/<hex>/...
+  reader.rs     — StoreReader trait; public read-side API
+  writer.rs     — StoreWriter trait; in-process (lojixd only)
+  bundle.rs    — BundleFromNix trait; /nix/store → lojix-store
+  index.rs      — IndexReader / IndexWriter; metadata+reachability
+  error.rs      — Error + Result
+```
 
-When lojix-store gets a real implementation (per
-`mentci-next/reports/030` Phase C onwards — after lojixd
-scaffolds and needs a place to write artifacts):
+Read `src/lib.rs` for the overview.
 
-- **Directory layout**: `~/.lojix/store/<hash>/…` — one
-  hash-keyed subdirectory per store entry. Subdirectory can
-  hold a single file or a tree.
-- **Index DB**: `~/.lojix/store/index.redb` (or similar) —
-  maps `blake3 → { path_within_store, byte_len, stored_at,
-  reachability_state }`.
-- **Writes**: in-process only (lojixd owns writes). Reader
-  library mmap-friendly.
-- **Type**: unknown at this layer — every entry is opaque
-  bytes-on-disk. Type is carried by the sema record that
-  references the entry's hash (no kind bytes, per
-  `mentci-next/reports/017 §3`).
-- **Access control**: capability tokens, signed by criomed.
+## Design invariants (enforced by types)
 
-## Not in scope
-
-- Compression. Files live as-is.
-- Deduplication beyond content-hash (already given by blake3
-  identity).
-- Versioning. Post-MVP question.
-- Distributed replication. Single-host for MVP.
+- Store-entry identity is `StoreEntryHash`, which is blake3 of
+  the canonical tree encoding.
+- Reader API is public (`StoreReader` trait); any process can
+  link it and read.
+- Writer API is in-process only (`StoreWriter` trait in
+  lojixd); writes require a criomed-signed capability (checked
+  upstream of the handle).
+- Paths are distinct types (`StorePath`) from bare `PathBuf`.
+- `BundlePolicy` makes the determinism controls explicit —
+  `normalise_timestamps`, `strip_build_id`, `rewrite_rpath`.
 
 ## Heritage
 
-Renamed from `criome-store` on 2026-04-24. The old repo's
-concept (single universal blob store for everything) split
-into `sema` (records) + `lojix-store` (files). See
+Renamed from `criome-store` on 2026-04-24 (the earlier concept
+of "one universal store" split into sema + lojix-store). The
+original prototype (a byte-map `HashMap<Hash, Vec<u8>>`) was
+deleted; nothing from it survives. See
 `mentci-next/reports/037 §3` for the naming decision.
-Repository was renamed on GitHub; git redirects the old URL.
 
 ## VCS
 
