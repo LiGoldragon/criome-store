@@ -14,7 +14,7 @@ carry `StoreEntryHash` fields pointing into lojix-store.
 ```
 nix builds → /nix/store/<hash>-<name>/ (transient)
               │
-              │ lojixd's BundleIntoLojixStore actor
+              │ lojix's BundleIntoLojixStore actor
               │  • copy closure with RPATH rewrite (patchelf)
               │  • blake3 hash of canonical layout
               │
@@ -39,16 +39,16 @@ Does not own:
 
 - The artifact files' content semantics — those are known only
   through the sema record that references the hash.
-- Garbage collection — criomed maintains the reachability view
+- Garbage collection — criome maintains the reachability view
   via sema records; lojix-store is GC's executor, not its
   policy author.
-- Capability-token verification — that's criomed's
-  authorization layer; lojix-store trusts criomed-signed
+- Capability-token verification — that's criome's
+  authorization layer; lojix-store trusts criome-signed
   tokens.
 
 ## Day-one canonical
 
-lojix-store ships **alongside lojixd from day one**, not after
+lojix-store ships **alongside lojix from day one**, not after
 some migration phase. Reasoning: dogfooding the real interface
 now reveals what it actually needs; deferred implementations
 rot. The gradualist path "nix builds; lojix-store stores;
@@ -68,7 +68,7 @@ src/
 
 The hash + layout helpers have real implementations and tests.
 The reader/writer trait methods are `todo!()` skeleton; bodies
-land in lojixd's StoreWriter / StoreReaderPool actors.
+land in lojix's StoreWriter / StoreReaderPool actors.
 
 ## Invariants
 
@@ -78,7 +78,7 @@ land in lojixd's StoreWriter / StoreReaderPool actors.
   not change the hash; only content does.
 - **Atomic writes.** Writers create a temp directory, then
   rename — no half-written entries.
-- **Capability-tokened access.** Writes require a criomed-
+- **Capability-tokened access.** Writes require a criome-
   signed token referencing a sema authz record.
 
 ## Cross-cutting context
@@ -91,5 +91,5 @@ land in lojixd's StoreWriter / StoreReaderPool actors.
 ## Status
 
 **CANON, day-one skeleton.** Hash and layout filled; reader /
-writer body fills land alongside lojixd scaffolding (Phase C
-per [lojix repo's ARCHITECTURE.md](https://github.com/LiGoldragon/lojix/blob/main/ARCHITECTURE.md)).
+writer body fills land alongside lojix scaffolding (Phase C
+per [lojix-cli repo's ARCHITECTURE.md](https://github.com/LiGoldragon/lojix-cli/blob/main/ARCHITECTURE.md)).

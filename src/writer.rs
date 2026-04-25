@@ -1,13 +1,13 @@
 //! Writer-side API for a lojix-store.
 //!
-//! **In-process only** — lives inside lojixd. No public writer
-//! trait; the store is single-writer under criomed-signed
+//! **In-process only** — lives inside lojix. No public writer
+//! trait; the store is single-writer under criome-signed
 //! capability tokens, and those tokens are validated inside
-//! lojixd before a `StoreWriter` is handed out.
+//! lojix before a `StoreWriter` is handed out.
 //!
 //! Nix's equivalent: `nix-daemon` is the only process that
 //! writes to `/nix/store`; everything else goes through its
-//! protocol. Same pattern here, but since lojixd unifies forge
+//! protocol. Same pattern here, but since lojix unifies forge
 //! + store concerns, writes happen via in-process actor calls.
 
 use std::path::Path;
@@ -39,7 +39,7 @@ pub trait StoreWriter: Send {
         source_narhash: Option<String>,
     ) -> Result<StoreEntryHash>;
 
-    /// Delete an entry. Typically criomed-driven GC; requires a
+    /// Delete an entry. Typically criome-driven GC; requires a
     /// capability token (validated upstream of this call).
     fn delete(&mut self, hash: StoreEntryHash) -> Result<()>;
 }
@@ -47,7 +47,7 @@ pub trait StoreWriter: Send {
 /// Concrete writer opening a store at `root`.
 ///
 /// NB: only one `StoreWriterHandle` should be alive per store
-/// root at a time. Enforcement is lojixd's responsibility.
+/// root at a time. Enforcement is lojix's responsibility.
 pub struct StoreWriterHandle {
     root: StoreRoot,
 }

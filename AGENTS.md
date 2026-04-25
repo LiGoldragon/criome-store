@@ -9,13 +9,13 @@ separate index DB tracks `hash → path + metadata + reachability`.
 Per `mentci-next/docs/architecture.md §5`:
 
 - **sema** (records DB, redb-backed) holds logical records —
-  owned by criomed.
+  owned by criome.
 - **lojix-store** (this repo) holds **real-file artifacts** —
-  compiled binary trees, user attachments — owned by lojixd.
+  compiled binary trees, user attachments — owned by lojix.
 - **sema records reference lojix-store hashes** as canonical
   artifact identity.
 
-During the bootstrap era, nix builds into `/nix/store`; lojixd
+During the bootstrap era, nix builds into `/nix/store`; lojix
 runs `BundleIntoLojixStore` to copy the closure into
 `~/.lojix/store/<blake3>/` with RPATH rewrite; the
 `StoreEntryHash` is what sema sees. `/nix/store` is a
@@ -29,7 +29,7 @@ build` fails (intentional — nothing's implemented). The
 skeleton **is** the design doc; modifying the interface means
 modifying this code.
 
-Real implementation lands alongside lojixd scaffolding (per
+Real implementation lands alongside lojix scaffolding (per
 `mentci-next/reports/030` Phase C).
 
 ## Module layout
@@ -40,7 +40,7 @@ src/
   hash.rs       — StoreEntryHash newtype (blake3)
   layout.rs     — StoreRoot, StorePath; ~/.lojix/store/<hex>/...
   reader.rs     — StoreReader trait; public read-side API
-  writer.rs     — StoreWriter trait; in-process (lojixd only)
+  writer.rs     — StoreWriter trait; in-process (lojix only)
   bundle.rs    — BundleFromNix trait; /nix/store → lojix-store
   index.rs      — IndexReader / IndexWriter; metadata+reachability
   error.rs      — Error + Result
@@ -55,7 +55,7 @@ Read `src/lib.rs` for the overview.
 - Reader API is public (`StoreReader` trait); any process can
   link it and read.
 - Writer API is in-process only (`StoreWriter` trait in
-  lojixd); writes require a criomed-signed capability (checked
+  lojix); writes require a criome-signed capability (checked
   upstream of the handle).
 - Paths are distinct types (`StorePath`) from bare `PathBuf`.
 - `BundlePolicy` makes the determinism controls explicit —

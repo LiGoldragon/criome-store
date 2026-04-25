@@ -11,7 +11,7 @@
 //! - Identity is blake3 of the tree's canonical content.
 //! - The index DB maps `StoreEntryHash → { path, metadata,
 //!   reachability }`. The index does not contain the files.
-//! - Writes go through `StoreWriter` (in-process inside lojixd).
+//! - Writes go through `StoreWriter` (in-process inside lojix).
 //! - Reads go through `StoreReader` (mmap-friendly; no daemon
 //!   round-trip for path resolution).
 //! - During the bootstrap era, most writes arrive via
@@ -22,7 +22,7 @@
 //!
 //! This crate is types + trait signatures + module layout.
 //! Bodies are `todo!()`. Real implementation lands alongside
-//! lojixd scaffolding (`mentci-next/reports/030` Phase C).
+//! lojix scaffolding (`mentci-next/reports/030` Phase C).
 
 pub mod hash;
 pub mod layout;

@@ -3,7 +3,7 @@
 //! During the bootstrap era, most artifacts enter lojix-store
 //! via this path:
 //!
-//! 1. lojixd invoked `nix build` — output landed in
+//! 1. lojix invoked `nix build` — output landed in
 //!    `/nix/store/<narhash>-<name>/`.
 //! 2. The `BundleFromNix` step walks the output closure.
 //! 3. For each binary or shared-lib in the closure, patchelf
@@ -16,7 +16,7 @@
 //!    which computes the final `StoreEntryHash` and places it.
 //!
 //! Eventually (post-nix-replacement) this step disappears —
-//! criomed drives rustc directly and writes into lojix-store.
+//! criome drives rustc directly and writes into lojix-store.
 //! The trait stays; only the input changes.
 
 use std::path::Path;
@@ -35,7 +35,7 @@ pub struct NixClosure<'a> {
 }
 
 /// Bundle step — takes a nix-store closure, produces a
-/// lojix-store entry. Implemented by lojixd.
+/// lojix-store entry. Implemented by lojix.
 pub trait BundleFromNix {
     fn bundle(&mut self, closure: NixClosure<'_>) -> Result<StoreEntryHash>;
 }

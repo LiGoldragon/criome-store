@@ -1,7 +1,7 @@
 //! Index DB for the lojix-store.
 //!
 //! Maps `StoreEntryHash → { tree_path, byte_len, built_at_rev,
-//! source_narhash, reachability_state }`. Owned by lojixd;
+//! source_narhash, reachability_state }`. Owned by lojix;
 //! backed by redb (or similar); readers open it read-only.
 //!
 //! The index does not hold the file contents — just metadata
@@ -11,8 +11,8 @@
 use crate::hash::StoreEntryHash;
 use crate::{Error, Result};
 
-/// Reachability-from-sema status for GC coordination. criomed
-/// updates these values via lojix-msg verbs as record graphs
+/// Reachability-from-sema status for GC coordination. criome
+/// updates these values via lojix-schema verbs as record graphs
 /// change.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Reachability {
@@ -40,7 +40,7 @@ pub trait IndexReader {
     fn iter(&self) -> Result<Box<dyn Iterator<Item = IndexRow> + '_>>;
 }
 
-/// Write-side handle; lives inside lojixd.
+/// Write-side handle; lives inside lojix.
 pub trait IndexWriter: Send {
     fn insert(&mut self, row: IndexRow) -> Result<()>;
     fn set_reachability(
