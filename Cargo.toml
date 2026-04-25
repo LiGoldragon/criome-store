@@ -6,7 +6,7 @@ description = "lojix-store — content-addressed filesystem (nix-store analogue;
 
 # Skeleton-as-design. Types and traits are pinned; bodies are
 # todo!(). Real implementation lands alongside lojix scaffold
-# (mentci-next/reports/030 Phase C). See AGENTS.md.
+# (mentci/reports/030 Phase C). See AGENTS.md.
 
 [dependencies]
 blake3 = "1"

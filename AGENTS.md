@@ -6,7 +6,7 @@ separate index DB tracks `hash → path + metadata + reachability`.
 
 ## Role in the sema ecosystem
 
-Per `mentci-next/docs/architecture.md §5`:
+Per `criome/ARCHITECTURE.md §5`:
 
 - **sema** (records DB, redb-backed) holds logical records —
   owned by criome.
@@ -30,7 +30,7 @@ skeleton **is** the design doc; modifying the interface means
 modifying this code.
 
 Real implementation lands alongside lojix scaffolding (per
-`mentci-next/reports/030` Phase C).
+`mentci/reports/030` Phase C).
 
 ## Module layout
 
@@ -67,7 +67,7 @@ Renamed from `criome-store` on 2026-04-24 (the earlier concept
 of "one universal store" split into sema + lojix-store). The
 original prototype (a byte-map `HashMap<Hash, Vec<u8>>`) was
 deleted; nothing from it survives. See
-`mentci-next/reports/037 §3` for the naming decision.
+`mentci/reports/037 §3` for the naming decision.
 
 ## VCS
 
