@@ -16,12 +16,44 @@ pub struct StoreEntryHash(pub [u8; HASH_LEN]);
 impl StoreEntryHash {
     /// Render as lowercase hex (the on-disk directory-name form).
     pub fn to_hex(&self) -> String {
-        todo!("hex-encode {:?}", self.0)
+        let mut s = String::with_capacity(HASH_LEN * 2);
+        for b in &self.0 {
+            s.push(hex_nibble(b >> 4));
+            s.push(hex_nibble(b & 0xf));
+        }
+        s
     }
 
     /// Parse from hex.
-    pub fn from_hex(_hex: &str) -> Result<Self, HashParseError> {
-        todo!()
+    pub fn from_hex(hex: &str) -> Result<Self, HashParseError> {
+        if hex.len() != HASH_LEN * 2 {
+            return Err(HashParseError::WrongLength);
+        }
+        let mut bytes = [0u8; HASH_LEN];
+        let raw = hex.as_bytes();
+        for i in 0..HASH_LEN {
+            let hi = nibble_value(raw[i * 2]).ok_or(HashParseError::InvalidHex)?;
+            let lo = nibble_value(raw[i * 2 + 1]).ok_or(HashParseError::InvalidHex)?;
+            bytes[i] = (hi << 4) | lo;
+        }
+        Ok(Self(bytes))
+    }
+}
+
+fn hex_nibble(n: u8) -> char {
+    match n {
+        0..=9 => (b'0' + n) as char,
+        10..=15 => (b'a' + n - 10) as char,
+        _ => unreachable!(),
+    }
+}
+
+fn nibble_value(c: u8) -> Option<u8> {
+    match c {
+        b'0'..=b'9' => Some(c - b'0'),
+        b'a'..=b'f' => Some(c - b'a' + 10),
+        b'A'..=b'F' => Some(c - b'A' + 10),
+        _ => None,
     }
 }
 

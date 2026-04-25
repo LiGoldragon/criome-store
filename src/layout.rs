@@ -27,13 +27,18 @@ pub struct StoreRoot(pub PathBuf);
 
 impl StoreRoot {
     /// The default root: `$HOME/.lojix/store/`.
+    ///
+    /// Falls back to `./.lojix/store` if `$HOME` is unset.
     pub fn default_for_user() -> Self {
-        todo!()
+        let base = std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| PathBuf::from("."));
+        Self(base.join(".lojix").join("store"))
     }
 
     /// Path to the subdirectory that holds a given entry's tree.
-    pub fn entry_tree(&self, _hash: StoreEntryHash) -> PathBuf {
-        todo!()
+    pub fn entry_tree(&self, hash: StoreEntryHash) -> PathBuf {
+        self.0.join(hash.to_hex())
     }
 
     /// Path to the index DB file.
@@ -42,8 +47,12 @@ impl StoreRoot {
     }
 
     /// Does this store root exist and look valid?
+    ///
+    /// Valid = the root directory exists AND the index DB file
+    /// exists. A store with no entries but an empty index is still
+    /// valid; a store with entries but no index is not.
     pub fn exists(&self) -> bool {
-        todo!()
+        self.0.is_dir() && self.index_db_path().is_file()
     }
 }
 
