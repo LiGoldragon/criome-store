@@ -25,7 +25,7 @@ use crate::hash::StoreEntryHash;
 use crate::{Error, Result};
 
 /// A closure of nix-store paths to be bundled in together. The
-/// root path is typically the opus's build output; dependency
+/// root path is typically the graph's build output; dependency
 /// paths are the transitive closure that RPATHs point at.
 #[derive(Clone, Debug)]
 pub struct NixClosure<'a> {
