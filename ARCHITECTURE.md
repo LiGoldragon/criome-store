@@ -182,11 +182,11 @@ forge scaffolding.
 ## Cross-cutting context
 
 - Two-stores model:
-  [criome/ARCHITECTURE.md §5](https://github.com/LiGoldragon/criome/blob/main/ARCHITECTURE.md)
+  criome/ARCHITECTURE.md §5
 - Compile + self-host loop:
-  [criome/ARCHITECTURE.md §7](https://github.com/LiGoldragon/criome/blob/main/ARCHITECTURE.md)
+  criome/ARCHITECTURE.md §7
 - Wire protocol layered atop signal:
-  [signal-forge/ARCHITECTURE.md](https://github.com/LiGoldragon/signal-forge/blob/main/ARCHITECTURE.md)
+  signal-forge/ARCHITECTURE.md
   (and a parallel signal-arca crate for writer ↔ arca-daemon
   verbs lands when deposits are wired)
 

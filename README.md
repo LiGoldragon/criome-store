@@ -17,13 +17,13 @@ per-store redb index.
 
 General-purpose: any data that doesn't fit in sema's record
 shape lives in arca.
-[`forge`](https://github.com/LiGoldragon/forge) is the most
+`forge` is the most
 active writer today; future writers (uploads, document store,
 others) earn the deposit capability the same way.
 
 See [`ARCHITECTURE.md`](ARCHITECTURE.md). Project-wide
 context:
-[criome/ARCHITECTURE.md](https://github.com/LiGoldragon/criome/blob/main/ARCHITECTURE.md).
+criome/ARCHITECTURE.md.
 
 ## Status
 
