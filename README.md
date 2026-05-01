@@ -21,7 +21,7 @@ shape lives in arca.
 active writer today; future writers (uploads, document store,
 others) earn the deposit capability the same way.
 
-See [`ARCHITECTURE.md`](ARCHITECTURE.md). Project-wide
+See `ARCHITECTURE.md`. Project-wide
 context:
 criome/ARCHITECTURE.md.
 
