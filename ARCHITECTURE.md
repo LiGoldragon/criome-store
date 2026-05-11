@@ -11,6 +11,14 @@ documents, anything blob-shaped. forge happens to be the most
 active writer today; future writers earn the same write
 capability the same way.
 
+> **Scope.** *"Data that doesn't fit in sema's record shape"* is a
+> today-marker: today's `sema-db` is a typed record store with a
+> defined shape vocabulary, so non-shape data needs somewhere else.
+> The eventual `Sema` represents all meaning, at which point this
+> distinction collapses. Today's arca is a realization step — the
+> blob plane today's stack needs. See `~/primary/ESSENCE.md`
+> §"Today and eventually — different things, different names".
+
 ## Two pieces
 
 arca is **one library + one daemon**:
